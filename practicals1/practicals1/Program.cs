@@ -1,58 +1,94 @@
-﻿using System;
-using System.Collections.Specialized;
-
+﻿using System.Numerics;
+using System.Text;
+using System;
 using System.IO;
-class Program {
-    static void Main(string[] args) {
-        
-        if (FileErrorChecker(args)){
-            SortedDictionary<string, int> dictionaryOfWords = FileReader(args[0]);
-            DictionaryPrinter(dictionaryOfWords);
-        }
-    }
 
-    static bool FileErrorChecker(string[] args){
-        try{
-            if(args.Length != 1){
-                Console.WriteLine("Argument Error");
-                return false;
-            }else{
-                using (StreamReader sr = new StreamReader(args[0])){}
-                return true;}
-            
-        }
-        catch(FileNotFoundException){
-            Console.WriteLine("File Error");
-            return false;
-        }
-        catch(UnauthorizedAccessException){
-            Console.WriteLine("File Error");
-            return false;
-        }
-    }
-    static SortedDictionary<string, int> FileReader(string filename){
-        char[] separators = new char[] { ' ', '\n', '\t' };
-        SortedDictionary<string, int> dictionaryOfWords = new SortedDictionary<string, int> ();
+namespace WordCounterProject {
+	public class Program {
+		static void Main(string[] args) {
+			var state = new ProgramInputOutputState();
+			if (!state.InitializeFromCommandLineArgs(args)) {
+				return;
+			}
 
-        using (StreamReader sr = new StreamReader(filename)){ //reading one line then processing it and repeate, so we do not run out of memory
-            string line;
-            while((line = sr.ReadLine()) != null){
-                string[] words = line.Split(separators, StringSplitOptions.RemoveEmptyEntries);
-                foreach(string word in words){
-                    if(dictionaryOfWords.ContainsKey(word)){
-                        dictionaryOfWords[word]++;
-                    }else{
-                        dictionaryOfWords.Add(word, 1);
-                    }
-                }
-            }
-        }
-        return dictionaryOfWords;
-    }
+			var counter = new WordCounter(state.Reader!, state.Writer!);
+			counter.Execute();
 
-    static void DictionaryPrinter(SortedDictionary<string, int> dictionary){
-        foreach(KeyValuePair<string, int> pair in dictionary){
-            Console.WriteLine(pair.Key + ": " + pair.Value);
-        }
-    }
+			state.Dispose();
+		}
+	}
+
+	public class ProgramInputOutputState : IDisposable {
+		public const string ArgumentErrorMessage = "Argument Error";
+		public const string FileErrorMessage = "File Error";
+
+		public TextReader? Reader { get; private set; }
+		public TextWriter? Writer { get; private set; }
+
+		public bool InitializeFromCommandLineArgs(string[] args) {
+			if (args.Length < 2) {
+				Console.WriteLine(ArgumentErrorMessage);
+				return false;
+			}
+
+			try {
+				Reader = new StreamReader(args[0]);
+			} catch (IOException) {
+				Console.WriteLine(FileErrorMessage);
+			} catch (UnauthorizedAccessException) {
+				Console.WriteLine(FileErrorMessage);
+			} catch (ArgumentException) {
+				Console.WriteLine(FileErrorMessage);
+			} 
+
+			try {
+				Writer = new StreamWriter(args[1]);
+			} catch (IOException) {
+				Console.WriteLine(FileErrorMessage);
+			} catch (UnauthorizedAccessException) {
+				Console.WriteLine(FileErrorMessage);
+			} catch (ArgumentException) {
+				Console.WriteLine(FileErrorMessage);
+			}
+
+			return true;
+		}
+
+		public void Dispose() {
+			Reader?.Dispose();
+			Writer?.Dispose();
+		}
+	}
+
+	public class WordCounter {
+		private TextReader _reader;
+		private TextWriter _writer;
+
+		public WordCounter(TextReader reader, TextWriter writer) {
+			_reader = reader;
+			_writer = writer;
+		}
+
+		public void Execute() {
+			StringBuilder word = new StringBuilder();
+			int wordCount = 0;         
+			
+			int charValue;
+			while ((charValue = _reader.Read()) != -1) {
+				char character = (char)charValue;
+				if (!Char.IsWhiteSpace(character)) {
+					word.Append(charValue);
+				} else {
+					if (word.Length > 0) {
+						wordCount++;
+						word.Clear();
+					}
+				}
+			}
+			if (word.Length > 0) {
+            wordCount++;}
+			
+			_writer.WriteLine(wordCount);
+		}
+	}
 }
