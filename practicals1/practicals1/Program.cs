@@ -2,6 +2,8 @@
 using System.Text;
 using System;
 using System.IO;
+using Microsoft.VisualBasic;
+using System.Security.Cryptography.X509Certificates;
 
 namespace WordCounterProject {
 	public class Program {
@@ -13,7 +15,7 @@ namespace WordCounterProject {
 
 			var counter = new WordCounter(state.Reader!, state.Writer!);
 			counter.Execute();
-
+			counter.WriteResults();
 			state.Dispose();
 		}
 	}
@@ -35,20 +37,26 @@ namespace WordCounterProject {
 				Reader = new StreamReader(args[0]);
 			} catch (IOException) {
 				Console.WriteLine(FileErrorMessage);
+				return false;
 			} catch (UnauthorizedAccessException) {
 				Console.WriteLine(FileErrorMessage);
+				return false;
 			} catch (ArgumentException) {
 				Console.WriteLine(FileErrorMessage);
+				return false;
 			} 
 
 			try {
 				Writer = new StreamWriter(args[1]);
 			} catch (IOException) {
 				Console.WriteLine(FileErrorMessage);
+				return false;
 			} catch (UnauthorizedAccessException) {
 				Console.WriteLine(FileErrorMessage);
+				return false;
 			} catch (ArgumentException) {
 				Console.WriteLine(FileErrorMessage);
+				return false;
 			}
 
 			return true;
@@ -63,6 +71,7 @@ namespace WordCounterProject {
 	public class WordCounter {
 		private TextReader _reader;
 		private TextWriter _writer;
+		private List<int> _paragraphWordCount = new List<int>();
 
 		public WordCounter(TextReader reader, TextWriter writer) {
 			_reader = reader;
@@ -71,7 +80,8 @@ namespace WordCounterProject {
 
 		public void Execute() {
 			StringBuilder word = new StringBuilder();
-			int wordCount = 0;         
+			int wordCount = 0;
+			bool multipleNewLines = false;
 			
 			int charValue;
 			while ((charValue = _reader.Read()) != -1) {
@@ -83,12 +93,24 @@ namespace WordCounterProject {
 						wordCount++;
 						word.Clear();
 					}
+					if (character == '\n' && multipleNewLines) {
+						if (wordCount != 0) { _paragraphWordCount.Add(wordCount); }
+						wordCount = 0;
+						multipleNewLines = false;
+					}
+					if (character == '\n') { multipleNewLines = true; }
 				}
 			}
 			if (word.Length > 0) {
-            wordCount++;}
-			
-			_writer.WriteLine(wordCount);
+				wordCount++;
+				_paragraphWordCount.Add(wordCount);
+			}
+		}
+
+		public	void WriteResults() {
+			foreach (int num in _paragraphWordCount){
+				_writer.WriteLine(num);
+			}
 		}
 	}
 }
