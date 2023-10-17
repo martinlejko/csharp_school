@@ -1,9 +1,12 @@
-﻿using System.Numerics;
+﻿#nullable enable
+using System.Numerics;
 using System.Text;
 using System;
 using System.IO;
 using Microsoft.VisualBasic;
 using System.Security.Cryptography.X509Certificates;
+using System.Net.Http.Headers;
+using System.Collections.Generic;
 
 namespace WordCounterProject {
 	public class Program {
@@ -81,32 +84,28 @@ namespace WordCounterProject {
 		public void Execute() {
 			StringBuilder word = new StringBuilder();
 			int wordCount = 0;
-			bool multipleNewLines = false;
-			
+
+
 			int charValue;
 			while ((charValue = _reader.Read()) != -1) {
 				char character = (char)charValue;
-				if (!Char.IsWhiteSpace(character)) {
-					word.Append(charValue);
+				if (!char.IsWhiteSpace(character)) {
+					word.Append(character);
 				} else {
 					if (word.Length > 0) {
 						wordCount++;
-						word.Clear();
 					}
-					if (character == '\n' && multipleNewLines) {
-						if (wordCount != 0) { _paragraphWordCount.Add(wordCount); }
-						wordCount = 0;
-						multipleNewLines = false;
+					word.Clear();
+					if (character == '\n' && (_reader.Peek() == '\n' || _reader.Peek() == -1)) {
+						if ( wordCount != 0) {
+							_paragraphWordCount.Add(wordCount);
+							wordCount = 0;
+						}
 					}
-					if (character == '\n') { multipleNewLines = true; }
 				}
 			}
-			if (word.Length > 0) {
-				wordCount++;
-				_paragraphWordCount.Add(wordCount);
-			}
-		}
-
+		}	
+		
 		public	void WriteResults() {
 			foreach (int num in _paragraphWordCount){
 				_writer.WriteLine(num);
@@ -114,3 +113,4 @@ namespace WordCounterProject {
 		}
 	}
 }
+#nullable disable
