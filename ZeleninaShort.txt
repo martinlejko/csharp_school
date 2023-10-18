@@ -1,0 +1,4 @@
+mesic	zbozi		typ			prodejce	mnozstvi	cena	trzba
+leden	brambory	tuzemske	Bartak		10895		12	    130740
+leden	brambory	vlastni		Celestyn	15478		10		154780
+leden	jablka		dovoz		Adamec		1321	    30		39630
