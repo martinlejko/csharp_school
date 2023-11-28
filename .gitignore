@@ -46,4 +46,5 @@ bld/
 # Specific files
 .DS_Store
 .idea/
+.vscode
 
