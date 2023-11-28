@@ -10,3 +10,41 @@ bld/
 [Bb][Ii][Nn]/
 [Oo][Bb][Jj]/
 [Ll][Oo][Gg]s/
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Specific files
+.DS_Store
+.idea/
+.vscode
+
