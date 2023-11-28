@@ -17,42 +17,57 @@ namespace WordCounterProject {
 			if (!state.InitializeFromCommandLineArgs(args)) {
 				return;
 			}
+
 			var counter = new WordCounter(state.Reader!, state.Writer!, int.Parse(args[^1]), state.highlightSpaces);
-			int fileIndex = 1;
+			int fileIndex = state.startIndex;
 
 			while(args[fileIndex] != args[^2]) {
+				try {
+					counter._reader = new StreamReader(args[fileIndex]);
+				} catch (FileNotFoundException) {
+					fileIndex++;
+					continue;
+				} catch (DirectoryNotFoundException) {
+					fileIndex++;
+					continue;
+				} catch (IOException) {
+					fileIndex++;
+					continue;
+				} catch (UnauthorizedAccessException) {
+					fileIndex++;
+					continue;
+				}
 				counter.readParagraphs();
-				counter._reader = new StreamReader(args[fileIndex]);
 				fileIndex++;
 			}
+			counter.processLine(new Token { Type = Token.TokenType.EndOfParagraph });
+			
 			state.Dispose();
 		}
 	}
 
+
 	public class ProgramInputOutputState : IDisposable {
 		public bool highlightSpaces = false;
+		public int startIndex = 0;
 		public const string ArgumentErrorMessage = "Argument Error";
 
 		public TextReader? Reader { get; private set; }
 		public TextWriter? Writer { get; private set; }
 
 		public bool InitializeFromCommandLineArgs(string[] args) {
+			if (args.Length < 3) {
+				Console.WriteLine(ArgumentErrorMessage);
+				return false;
+			}
 			if (args[0] == "--highlight-spaces") {
 				if (args.Length < 4) {
 					Console.WriteLine(ArgumentErrorMessage);
 					return false;
                 }
                 highlightSpaces = true;
-				Reader = new StreamReader(args[1]);
-
-			} else {
-				if (args.Length < 3) {
-					Console.WriteLine(ArgumentErrorMessage);
-					return false;
-				}
-				Reader = new StreamReader(args[0]);
+				startIndex = 1;
 			}
-
 
 			Writer = new StreamWriter(args[^2]);
 
@@ -148,15 +163,21 @@ namespace WordCounterProject {
 			token = new Token { Type = Token.TokenType.EndOfFile };
 			processLine(token);
 
-		void processLine(Token token) {
+			// if (atlestOneWord) {
+			// 	if (highlightSpaces){
+
+			// 	}else{
+			// 	}
+			// }
+		}
+
+		
+		public void processLine(Token token) {
 			if (token.Type == Token.TokenType.Word) {
 				if (lastParagraph) {
 					if (highlightSpaces) {
-						_writer.Write("<-");
-						_writer.WriteLine();
-						_writer.WriteLine();
+						_writer.WriteLine("<-");
 					} else{
-						_writer.WriteLine();
 						_writer.WriteLine();
 					}
 					lastParagraph = false;
@@ -188,7 +209,13 @@ namespace WordCounterProject {
 						}
 					}
 				}
-
+				if (atlestOneWord && words.Count != 0) {
+					if (highlightSpaces) {
+						_writer.WriteLine("<-");
+					} else {
+						_writer.WriteLine();
+					}
+				}
 				wordsLength = 0;
 				wordsCount = 0;
 				words.Clear();	
@@ -196,8 +223,6 @@ namespace WordCounterProject {
 			if (token.Type == Token.TokenType.EndOfFile) {
 				return;
 			}
-
-
 		}
 				
         void printLine(){
@@ -224,15 +249,8 @@ namespace WordCounterProject {
 			}
 		}
 
-		if (atlestOneWord) {
-			if (highlightSpaces){
-				_writer.WriteLine("<-");
-			}else{
-				_writer.WriteLine();
-			}
-		}
 
 	}
 }
-}
+
 #nullable disable
