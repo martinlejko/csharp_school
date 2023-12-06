@@ -9,17 +9,24 @@ using System.Reflection.Metadata.Ecma335;
 using System.Data.Common;
 using System.Security.Cryptography.X509Certificates;
 using System.Net;
+using System.Security.Cryptography;
 
 namespace NezarkaBookstore
 {
-	class Porgram{
+	public class Porgram{
 
-		static void Main(string[] args){
+		public static void Main(){
 			ModelStore bookstoreModel;
 			View bookstoreView;
-			StreamReader reader = new StreamReader("data.txt");
+			Controller controller;
+			StreamReader reader = new StreamReader(Console.OpenStandardInput());
 			bookstoreModel = ModelStore.LoadFrom(reader);
-			bookstoreView = new View(bookstoreModel, reader);
+			if (bookstoreModel == null){
+				Console.WriteLine("Data error.");
+				System.Environment.Exit(0);
+			}
+			controller = new Controller(bookstoreModel);
+			bookstoreView = new View(bookstoreModel, controller, reader);
 			bookstoreView.Process();
 		}
 	}
@@ -29,7 +36,7 @@ namespace NezarkaBookstore
 	// Model
 	//
 
-	class ModelStore {
+	public class ModelStore {
 		private List<Book> books = new List<Book>();
 		private List<Customer> customers = new List<Customer>();
 
@@ -43,6 +50,35 @@ namespace NezarkaBookstore
 
 		public Customer GetCustomer(int id) {
 			return customers.Find(c => c.Id == id);
+		}
+
+		public int GetNumberOfItems(int id)
+		{
+			Customer customer = GetCustomer(id);
+
+			if (customer != null)
+			{
+				ShoppingCart cart = customer.ShoppingCart;
+
+				return cart.Items.Count;
+			}
+			return 0;
+		}
+
+		public int GetTotalPrice(int customerID){
+			var cart = GetCustomer(customerID).ShoppingCart;
+			int totalPrice = 0;
+			foreach (var item in cart.Items){
+				var book = GetBook(item.BookId);
+				totalPrice += item.Count * (int)book.Price;
+			}
+			return totalPrice;
+		}
+		public bool BookExists(int BookId){
+			if (GetBook(BookId) == null){
+				return false;
+			}
+			return true;
 		}
 
 		private bool cointainsCharacter(string str){
@@ -176,14 +212,14 @@ namespace NezarkaBookstore
 		}
 	}
 
-	class Book {
+	public class Book {
 		public int Id { get; set; }
 		public string Title { get; set; }
 		public string Author { get; set; }
 		public decimal Price { get; set; }
 	}
 
-	class Customer {
+	public class Customer {
 		private ShoppingCart shoppingCart;
 
 		public int Id { get; set; }
@@ -203,50 +239,88 @@ namespace NezarkaBookstore
 		}
 	}
 
-	class ShoppingCartItem {
+	public class ShoppingCartItem {
 		public int BookId { get; set; }
 		public int Count { get; set; }
 	}
 
-	class ShoppingCart {
+	public class ShoppingCart {
 		public int CustomerId { get; set; }
 		public List<ShoppingCartItem> Items = new List<ShoppingCartItem>();
 	}
 
 
 	//Controller
-	class Controller{
+	public class Controller{
+		private ModelStore model;
+
+		public Controller(ModelStore model){
+			this.model = model;
+		}
+
+		public void ProcessAction(string action, int customerId, int bookId){
+			if (action == "Add"){
+				if (model.BookExists(bookId)){
+					var customer = model.GetCustomer(customerId);
+					var cart = customer.ShoppingCart;
+					var item = cart.Items.Find(i => i.BookId == bookId);
+					if (item == null){
+						cart.Items.Add(new ShoppingCartItem{BookId = bookId, Count = 1});
+					} else {
+						item.Count++;
+					}
+				} else {
+					throw new Exception();
+				}
+			}
+			if (action == "Remove"){
+				var customer = model.GetCustomer(customerId);
+				var cart = customer.ShoppingCart;
+				var item = cart.Items.Find(i => i.BookId == bookId);
+				if (item != null){
+					if (item.Count > 1){
+						item.Count--;
+					} else {
+						cart.Items.Remove(item);
+					}
+				} else {
+					throw new Exception();
+				}
+			}
+		}
 		
     }
 
 	
 
 	//View
-	class View{
+	public class View{
 		private ModelStore model;
 		private TextReader reader;
+		private Controller controller;
 		private string url = "http://www.nezarka.net/";
 
-		public View(ModelStore model, TextReader reader){
+		public View(ModelStore model, Controller controller,TextReader reader){
 			this.model = model;
 			this.reader = reader;
+			this.controller = controller;
 		}
 		
-		private void UrlTokensCheck(string[] UrlTokens){
+		private void UrlTokensCheck(string[] UrlTokens, int customerId){
 			if (UrlTokens[0] == "Books"){
 				if (UrlTokens.Length == 1){
-					Console.WriteLine("ONLY BOOKS");
+					CallBooks(customerId);
 				} else if (UrlTokens.Length == 3 && UrlTokens[1] == "Detail" && int.TryParse(UrlTokens[2], out int parsedId) && parsedId > 0){
-
-					Console.WriteLine("BOOK DETAIL" + parsedId);
+					CallBookDetail(customerId, parsedId);
 				} else {
 					CallInvalidRequest();
 				}
 			} else if (UrlTokens[0] == "ShoppingCart"){
 				if (UrlTokens.Length == 1){
-					Console.WriteLine("SHOPPING CART");
+					CallCart(customerId);
 				} else if (UrlTokens.Length == 3 && (UrlTokens[1] == "Add" || UrlTokens[1] == "Remove") && int.TryParse(UrlTokens[2], out int parsedId) && parsedId > 0){
-					Console.WriteLine("ORDER " + "Action: " + UrlTokens[1] + " BookId: " + parsedId );
+					controller.ProcessAction(UrlTokens[1], customerId, parsedId);
+					CallCart(customerId);
 				} else {
 					CallInvalidRequest();
 				}
@@ -270,7 +344,7 @@ namespace NezarkaBookstore
 						}
 
 						int customerId = int.Parse(tokens[1]);
-						if (customerId < 0){
+						if (customerId < 0 || model.GetCustomer(customerId) == null){
 							throw new Exception();
 						}
 						if (!tokens[2].StartsWith(url)){
@@ -279,9 +353,7 @@ namespace NezarkaBookstore
 
 						string slicedUrl = tokens[2].Substring(url.Length);
 						string[] slicedUrlTokens = slicedUrl.Split('/');
-						UrlTokensCheck(slicedUrlTokens);
-
-						// Console.WriteLine("moze byt spracovane " + slicedUrl);
+						UrlTokensCheck(slicedUrlTokens, customerId);
 
 					} catch (Exception){
 						CallInvalidRequest();
@@ -294,7 +366,7 @@ namespace NezarkaBookstore
 			Console.WriteLine("====");
 		}
 
-		private void CallInvalidRequest(){
+		public void CallInvalidRequest(){
     		Console.WriteLine("<!DOCTYPE html>");
 			Console.WriteLine("<html lang=\"en\" xmlns=\"http://www.w3.org/1999/xhtml\">");
 			Console.WriteLine("<head>");
@@ -303,6 +375,142 @@ namespace NezarkaBookstore
 			Console.WriteLine("</head>");
 			Console.WriteLine("<body>");
 			Console.WriteLine("<p>Invalid request.</p>");
+			Console.WriteLine("</body>");
+			Console.WriteLine("</html>");
+			PrintEnding();
+		}
+
+		private void CallHeader(int customerId){
+			Console.WriteLine("<!DOCTYPE html>");
+			Console.WriteLine("<html lang=\"en\" xmlns=\"http://www.w3.org/1999/xhtml\">");
+			Console.WriteLine("<head>");
+			Console.WriteLine("\t<meta charset=\"utf-8\" />");
+			Console.WriteLine("\t<title>Nezarka.net: Online Shopping for Books</title>");
+			Console.WriteLine("</head>");
+			Console.WriteLine("<body>");
+			Console.WriteLine("\t<style type=\"text/css\">");
+			Console.WriteLine("\t\ttable, th, td {");
+			Console.WriteLine("\t\t\tborder: 1px solid black;");
+			Console.WriteLine("\t\t\tborder-collapse: collapse;");
+			Console.WriteLine("\t\t}");
+			Console.WriteLine("\t\ttable {");
+			Console.WriteLine("\t\t\tmargin-bottom: 10px;");
+			Console.WriteLine("\t\t}");
+			Console.WriteLine("\t\tpre {");
+			Console.WriteLine("\t\t\tline-height: 70%;");
+			Console.WriteLine("\t\t}");
+			Console.WriteLine("\t</style>");
+			Console.WriteLine("\t<h1><pre>  v,<br />Nezarka.NET: Online Shopping for Books</pre></h1>");
+			Console.WriteLine("\t"+model.GetCustomer(customerId).FirstName + ", here is your menu:");
+			Console.WriteLine("\t<table>");
+			Console.WriteLine("\t\t<tr>");
+			Console.WriteLine("\t\t\t<td><a href=\"/Books\">Books</a></td>");
+			Console.WriteLine("\t\t\t<td><a href=\"/ShoppingCart\">Cart (" + model.GetNumberOfItems(customerId) + ")</a></td>");
+			Console.WriteLine("\t\t</tr>");
+			Console.WriteLine("\t</table>");
+		}
+
+		private void printBookList(){
+			int BooksPerRow = 3;
+			int BookCounter = 0;
+			var bookList = model.GetBooks();
+			foreach (var Book in bookList){
+				if (BookCounter % BooksPerRow == 0){
+					Console.WriteLine("\t\t<tr>");
+				}
+				Console.WriteLine("\t\t\t<td style=\"padding: 10px;\">");
+				Console.WriteLine("\t\t\t\t<a href=\"/Books/Detail/"+ Book.Id + "\">" + Book.Title + "</a><br />");
+				Console.WriteLine("\t\t\t\tAuthor: " + Book.Author + "<br />");
+				Console.WriteLine("\t\t\t\tPrice: " + Book.Price + " EUR &lt;<a href=\"/ShoppingCart/Add/"+ Book.Id + "\">Buy</a>&gt;");
+				Console.WriteLine("\t\t\t</td>");
+				BookCounter++;
+
+				if (BookCounter % BooksPerRow == 0){
+					Console.WriteLine("\t\t</tr>");
+				}
+			}
+			if (BookCounter % BooksPerRow != 0){
+				Console.WriteLine("\t\t</tr>");
+			}
+		}
+
+		private void CallBooks(int customerId){
+			CallHeader(customerId);
+
+			Console.WriteLine("\tOur books for you:");
+			Console.WriteLine("\t<table>");
+
+			printBookList();
+
+			Console.WriteLine("\t</table>");
+			Console.WriteLine("</body>");
+			Console.WriteLine("</html>");
+			PrintEnding();
+
+		}
+
+		private void CallBookDetail(int customerId, int bookId){
+			CallHeader(customerId);
+			var Book = model.GetBook(bookId);
+
+			Console.WriteLine("\tBook details:");
+			Console.WriteLine("\t<h2>"+ Book.Title +"</h2>");
+			Console.WriteLine("\t<p style=\"margin-left: 20px\">");
+			Console.WriteLine("\tAuthor: " + Book.Author + "<br />");
+			Console.WriteLine("\tPrice: " + Book.Price + " EUR<br />");
+			Console.WriteLine("\t</p>");
+			Console.WriteLine("\t<h3>&lt;<a href=\"/ShoppingCart/Add/" + Book.Id + "\">Buy this book</a>&gt;</h3>");
+			Console.WriteLine("</body>");
+			Console.WriteLine("</html>");
+			PrintEnding();	
+		}
+
+		private void CallCart(int customerId){
+			CallHeader(customerId);
+			if (model.GetNumberOfItems(customerId) == 0){
+				CallEmtyCart();
+			} else {
+				CallCartWithItems(customerId);
+			}
+		}
+
+		private void CallCartWithItems(int customerID){
+			Console.WriteLine("\tYour shopping cart:");
+			Console.WriteLine("\t<table>");
+			Console.WriteLine("\t\t<tr>");
+			Console.WriteLine("\t\t\t<th>Title</th>");
+			Console.WriteLine("\t\t\t<th>Count</th>");
+			Console.WriteLine("\t\t\t<th>Price</th>");
+			Console.WriteLine("\t\t\t<th>Actions</th>");
+			Console.WriteLine("\t\t</tr>");
+			PrintCartItems(customerID);
+
+		}
+
+		private void PrintCartItems(int customerID){
+			var cart = model.GetCustomer(customerID).ShoppingCart;
+			foreach (var item in cart.Items){
+				var book = model.GetBook(item.BookId);
+				Console.WriteLine("\t\t<tr>");
+				Console.WriteLine("\t\t\t<td><a href=\"/Books/Detail/" + book.Id + "\">" + book.Title + "</a></td>");
+				Console.WriteLine("\t\t\t<td>" + item.Count + "</td>");
+				if (item.Count > 1){
+					Console.WriteLine("\t\t\t<td>" + item.Count +" * " + book.Price + " = " + (item.Count * book.Price) + " EUR</td>");
+				} else {
+					Console.WriteLine("\t\t\t<td>" + book.Price + " EUR</td>");
+				}
+				Console.WriteLine("\t\t\t<td>&lt;<a href=\"/ShoppingCart/Remove/" + book.Id + "\">Remove</a>&gt;</td>");
+				Console.WriteLine("\t\t</tr>");
+			}
+			Console.WriteLine("\t</table>");
+			Console.WriteLine("\tTotal price of all items: " + model.GetTotalPrice(customerID) + " EUR");
+			Console.WriteLine("</body>");
+			Console.WriteLine("</html>");
+			PrintEnding();
+
+		}
+		private void CallEmtyCart(){
+			Console.WriteLine("\tYour shopping cart is EMPTY.");
 			Console.WriteLine("</body>");
 			Console.WriteLine("</html>");
 			PrintEnding();
