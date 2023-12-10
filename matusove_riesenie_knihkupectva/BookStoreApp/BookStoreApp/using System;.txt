@@ -1,0 +1,277 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+using System.IO;
+
+namespace NezarkaBookstore
+{
+    //
+    // Model
+    //
+
+    class ModelStore
+    {
+        private List<Book> books = new List<Book>();
+        private List<Customer> customers = new List<Customer>();
+
+        public IList<Book> GetBooks()
+        {
+            return books;
+        }
+
+        public Book GetBook(int id)
+        {
+            return books.Find(b => b.Id == id);
+        }
+
+        public Customer GetCustomer(int id)
+        {
+            return customers.Find(c => c.Id == id);
+        }
+
+
+        /// <summary>
+        /// Methods to validate initial input 
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private static bool IsValidString(string value)
+        {
+            return !value.Contains(";") || !value.Contains("\n");
+        }
+
+        public static bool TryAddBook(string[] tokens, ModelStore store)
+        {
+            if (!int.TryParse(tokens[1], out int BookID) || BookID < 0 ||
+                !int.TryParse(tokens[4], out int BookPrice) || BookPrice < 0)
+            {
+                return false;
+            }
+
+            if (!IsValidString(tokens[2]) || !IsValidString(tokens[3])){
+                return false;
+            }
+            store.books.Add(new Book
+            {
+                Id = BookID,
+                Title = tokens[2],
+                Author = tokens[3],
+                Price = BookPrice
+            });
+
+            return true;
+        }
+
+        public static bool TryAddCustomer(string[] tokens, ModelStore store)
+        {
+            if (!int.TryParse(tokens[1], out int customerId) || customerId < 0)
+            {
+                return false;
+            }
+            if (!IsValidString(tokens[2]) || !IsValidString(tokens[3]))
+            {
+                return false;
+            }
+
+            store.customers.Add(new Customer
+            {
+                Id = customerId,
+                FirstName = tokens[2],
+                LastName = tokens[3]
+            });
+            return true;
+        }
+
+        public static bool TryAddCartItem(string[] tokens, ModelStore store)
+        {
+            if (!int.TryParse(tokens[1], out int custId) || custId < 0 ||
+            !int.TryParse(tokens[2], out int cartBookId) || cartBookId < 0 ||
+            !int.TryParse(tokens[3], out int bookCount) || bookCount < 0)
+            {
+                return false;
+            }
+
+            var costumer = store.GetCustomer(custId);
+            if (costumer == null)
+            {
+                return false;
+            }
+            costumer.ShoppingCart.Items.Add(new ShoppingCartItem
+            {
+                BookId = cartBookId,
+                Count = bookCount
+            });
+            return true;
+        }
+
+        /// <summary>
+        /// main method
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="store"></param>
+        /// <returns></returns>
+        public static bool ProcessLine(string line,ModelStore store)
+        {
+            string[] tokens = line.Split(';');
+            try
+            {
+                switch (tokens[0])
+                {
+                    case "BOOK":
+                        {
+                            return TryAddBook(tokens, store);
+                        }
+                    case "CUSTOMER":
+                        {
+                            return TryAddCustomer(tokens, store);
+                        }
+                    case "CART-ITEM":
+                        {
+                            return TryAddCartItem(tokens, store);
+                        }
+                    default:
+                        {
+                            return false;
+                        }
+                        
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool ValidateLine(string line, string expected)
+        {
+            return line == expected;
+        }
+        /// <summary>
+        /// Start the show
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <returns></returns>
+        public static ModelStore LoadFrom(TextReader reader)
+        {
+            var store = new ModelStore();
+
+            if (!ValidateLine(reader.ReadLine(), "DATA-BEGIN"))
+            {
+                Console.WriteLine("Data error.");
+                return null;
+            }
+
+            while (true)
+            {
+                string line = reader.ReadLine();
+                    
+                if (line == null)
+                {
+                    return null;
+                }
+                    
+                else if (line == "DATA-END")
+                {
+                    break;
+                }
+
+                if (!ProcessLine(line,store))
+                {
+                    Console.WriteLine("Data error");
+                    return null;
+                }
+                    
+            }
+            
+            return store;
+        }
+
+        // Method to add a book to the shopping cart
+        public void AddBookToCart(int customerId, int bookId)
+        {
+            var customer = GetCustomer(customerId);
+            if (customer == null) return;
+
+            var cartItem = customer.ShoppingCart.Items.Find(item => item.BookId == bookId);
+            if (cartItem != null)
+            {
+                cartItem.Count++;
+            }
+            else
+            {
+                customer.ShoppingCart.Items.Add(new ShoppingCartItem
+                {
+                    BookId = bookId,
+                    Count = 1
+                });
+            }
+        }
+
+        // Method to remove a book from the shopping cart
+        public void RemoveBookFromCart(int customerId, int bookId)
+        {
+            var customer = GetCustomer(customerId);
+            if (customer == null) return;
+
+            var cartItem = customer.ShoppingCart.Items.Find(item => item.BookId == bookId);
+            if (cartItem != null)
+            {
+                if (cartItem.Count > 1)
+                {
+                    cartItem.Count--;
+                }
+                else
+                {
+                    customer.ShoppingCart.Items.Remove(cartItem);
+                }
+            }
+        }
+
+    }
+
+    class Book
+    {
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string Author { get; set; }
+        public decimal Price { get; set; }
+    }
+
+    class Customer
+    {
+        private ShoppingCart shoppingCart;
+
+        public int Id { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+
+        public ShoppingCart ShoppingCart
+        {
+            get
+            {
+                if (shoppingCart == null)
+                {
+                    shoppingCart = new ShoppingCart();
+                }
+                return shoppingCart;
+            }
+            set
+            {
+                shoppingCart = value;
+            }
+        }
+    }
+
+    class ShoppingCartItem
+    {
+        public int BookId { get; set; }
+        public int Count { get; set; }
+    }
+
+    class ShoppingCart
+    {
+        public int CustomerId { get; set; }
+        public List<ShoppingCartItem> Items = new List<ShoppingCartItem>();
+    }
+}
