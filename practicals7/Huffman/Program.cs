@@ -26,12 +26,11 @@ namespace Huffman
                 return;
             }
 
-            using (reader)
-            {
-                var frequencies = CalculateFrequencies(reader);
-                var tree = new HuffmanTree(frequencies);
-                tree.PrintTree();
-            }
+        
+            var frequencies = CalculateFrequencies(reader);
+            var tree = new HuffmanTree(frequencies);
+            tree.PrintTree();
+        
         }
 
         static IEnumerable<KeyValuePair<int, int>> CalculateFrequencies(Stream stream)

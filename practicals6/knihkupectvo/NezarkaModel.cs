@@ -19,7 +19,7 @@ namespace NezarkaBookstore
 			ModelStore bookstoreModel;
 			View bookstoreView;
 			Controller controller;
-			StreamReader reader = new StreamReader(Console.OpenStandardInput());
+			StreamReader reader = new StreamReader("data.txt");
 			bookstoreModel = ModelStore.LoadFrom(reader);
 			if (bookstoreModel == null){
 				Console.WriteLine("Data error.");
@@ -38,7 +38,7 @@ namespace NezarkaBookstore
 
 	public class ModelStore {
 		private List<Book> books = new List<Book>();
-		private List<Customer> customers = new List<Customer>();
+		public List<Customer> customers = new List<Customer>();
 
 		public IList<Book> GetBooks() {
 			return books;
@@ -82,7 +82,7 @@ namespace NezarkaBookstore
 		}
 
 		private bool cointainsCharacter(string str){
-			char[] specialChars = { ';', '\n', '\r' }; 
+			char[] specialChars = { ';', '\n', '\r' };
 
     		foreach (char c in specialChars)
     		{
@@ -111,7 +111,7 @@ namespace NezarkaBookstore
 
 			} catch (Exception){
 				Console.WriteLine(errorMessage);
-				System.Environment.Exit(0);	
+				System.Environment.Exit(0);
 			}
 		}
 
@@ -132,7 +132,7 @@ namespace NezarkaBookstore
 				}
 			} catch (Exception){
 				Console.WriteLine(errorMessage);
-				System.Environment.Exit(0);	
+				System.Environment.Exit(0);
 			}
 		}
 
@@ -154,7 +154,7 @@ namespace NezarkaBookstore
 
 			} catch (Exception){
 				Console.WriteLine(errorMessage);
-				System.Environment.Exit(0);	
+				System.Environment.Exit(0);
 			}
 		}
 
@@ -288,10 +288,10 @@ namespace NezarkaBookstore
 				}
 			}
 		}
-		
+
     }
 
-	
+
 
 	//View
 	public class View{
@@ -300,12 +300,12 @@ namespace NezarkaBookstore
 		private Controller controller;
 		private string url = "http://www.nezarka.net/";
 
-		public View(ModelStore model, Controller controller,TextReader reader){
+		public View(ModelStore? model, Controller? controller,TextReader? reader){
 			this.model = model;
 			this.reader = reader;
 			this.controller = controller;
 		}
-		
+
 		private void UrlTokensCheck(string[] UrlTokens, int customerId){
 			if (UrlTokens[0] == "Books"){
 				if (UrlTokens.Length == 1){
@@ -337,7 +337,7 @@ namespace NezarkaBookstore
 							break;
 						}
 						string[] tokens = line.Split(' ');
-				
+
 						//check first two parameters
 						if (tokens.Length != 3 || tokens[0] != "GET"){
 							throw new Exception();
@@ -359,7 +359,7 @@ namespace NezarkaBookstore
 						CallInvalidRequest();
 					}
 				}
-		}	
+		}
 
 
 		void PrintEnding(){
@@ -380,7 +380,7 @@ namespace NezarkaBookstore
 			PrintEnding();
 		}
 
-		private void CallHeader(int customerId){
+		public void CallHeader(int customerId){
 			Console.WriteLine("<!DOCTYPE html>");
 			Console.WriteLine("<html lang=\"en\" xmlns=\"http://www.w3.org/1999/xhtml\">");
 			Console.WriteLine("<head>");
@@ -462,7 +462,7 @@ namespace NezarkaBookstore
 			Console.WriteLine("\t<h3>&lt;<a href=\"/ShoppingCart/Add/" + Book.Id + "\">Buy this book</a>&gt;</h3>");
 			Console.WriteLine("</body>");
 			Console.WriteLine("</html>");
-			PrintEnding();	
+			PrintEnding();
 		}
 
 		private void CallCart(int customerId){
