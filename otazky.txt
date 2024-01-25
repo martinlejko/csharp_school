@@ -1,0 +1,162 @@
+Prva prednaska
+
+record co tam dogeneruje to string
+
+S c1 = new() S pre class a pre struct
+
+ked referencny typ tak sa vytvori referencia na adresu kde je overhead sync a co?
+
+druha prednaska
+
+auto implemented props
+int? ma 5B pretoze tam je bool na null
+
+tretia prednaska
+CLR common language runtime
+trik s commentami /*/ cute
+ked mame C2 : C1 I1 vtedy sa Interface tabulka vyplnuje znova
+
+C1 : I1
+C2 : C1
+C2 { m1()}
+member hiding kedze ta tabulka interfacu je vyplnena a nevyplnujeme ju pre C2
+
+
+
+stvrta prednaska-->interface,abstract class
+
+rozdiel medzi lib a programom je to ze obe su dll ale library nema entry point pre CIL kod
+Ahead of Time x Just in Time
+-pritom ako sa vygeneruje CIL kod tak sa generuju aj metadata ktore popisuju nejaku strukturu CIL
+
+-pdb iba pre debugging napriklad mena pre lokalne promenne
+
+abstract class zakazuje instance tejto classy thats it
+
+mozeme mat viacej interfacov ale iba jednu classu A : I1, I2 -- A : B
+dedi sa vsetko okrem constructoru
+is sa pyta ci je priraditelne napr A is B
+
+piata prednaska-->enum,const,class v pamati
+
+const nezabera miesto v structure alebo class
+v CIL kode 300*1000 sa premeni najprv do 300000
+pri update library sa s const pocita ze je nezmenena alebo static readonly sa precompiluje
+pozerame sa ze ak sa construktor classy volal tak sa skipne
+_ nic neznamena v cislach
+enums su hodnotove typy
+v enume su velke hodnoty ako int
+____________________
+|x = |object()|body| === je telo ako sa skonsruuje class v pamati
+--------------------
+
+emum X: byte{A,B,C} hovori ze kazda polozka je velka 1B a hovorime ze sa tam to zmesti inac type to je stale enum
+
+siesta prednaska--> benchmark,virtual methods
+deklaracia metody je stale rovnaka
+A a = new A();
+a.m();
+a = new B();
+a.m();
+je implemetacia metody z A
+
+_________
+
+A a = new A();
+a.f(); --> pozerame sa v CIL ze akeho je to typu je to typu A pozrieme ako je zadefinovana je definovana ako virt preto callvirt A.f()
+a = new B();
+a.f(); -->pozerame akeho je to typu je to stale typu A preto callvirt A.f()
+
+v CIL nevieme az za runtimu sa rozhodneme striktne
+
+JIT bude mat VMT(virtual method table)
+je to ulozene v instanci type 
+
+virtual je novy zaznam
+override je prepis existujeceho
+
+siedma prednaska-tabulky VMT,abstract,interface
+sealed odvolava slib vylepsovania
+pri abstraktnych mozeme mat prazdnu tabulku a interface musi byt hned
+
+			abstract --- interface
+vynuceni kontraktu	   y	----	y
+public contract 	   y/n --- y
+slib rozsiretelnosti       sealed --- optIN
+data 			   y  --- n
+vicenasobna dedic          n(pretoze data)  --- y
+
+
+problem diamantovej dedicnosti
+
+base.m() najde sa v predkovy a nevirtualne volanie 
+
+
+
+osma prednaska-properties,konvence
+v konstruktore mozem volat nadefinovane metody
+nebezpecne ale niekedy sa moze previest nieco pred 
+properties a dobre konvence s slovesom a podmenom
+.isNaN
+
+deviata prednaska-zivotnost,typ promennych
+-hodnota
+-referecnce - velke podla platfomy 32/64 bit
+-ref na cely objekt, GCheap
+-ak dame nejaky struct alebo nieco do classy tak dochadza k boxingu a vytvory sa na nu referencia so syncblocom a datatypom
+-Object o = 5 by spravilo boxing no Obeject 0 = 5 + 1 nepojde kedye object nema zadefinovane +
+opacna vec k boxingu unboxing prekopirujem hodnotu objectu do nejakej hodnoty int i = (int)o
+pointre/tracking ref
+
+desiata prednaska-ref,tracking ref
+void f(ref x) -- je to velke jak jeden pointer cize but 32/64bit
+class C{}
+void f(C c1(ref), int x(value), ref int x(ref)){}
+ak spravime ref a nejaky ref typ je to zbytocne o 1 referenciu navyse
+
+jedenasta prednaska-arrays, constructory, goto
+nested polia int[,] a = new int[2,3]
+pri struct sa vola defualt constructor : default-vynulovany
+ak dame new S1() vieme tam pridat nas vlastny constructor
+goto - nemozeme skakat do zatvoriek {...}
+switch:
+static int f2(int? x) => x switch { > 10 and <20 => 1000, int b => b + 10}
+discard to je ako keby default pouzije sa _ => default option
+is pattern mathcing a is < 10 and > 100 
+
+
+dvanasta prednaska - pattern matching, exeptions
+a is X(property1,property2)
+X musi mat constructor v () inac by sa nenamatchoval a dal by error
+a taktiez void Deconstruct
+X(prop1,prop2) je volanie metody deconstruct
+pouzivame pattern matching
+int[] c = [-1, .. a, -2] prekopiruje acko do listu
+mali by sme robit throw NEW Exp stale vyvorit novu
+try je celkom lacni tie vynimky ale niesu
+
+
+trinasta prednaska - 
+try finally block 
+IDisposable
+exeption filters (when) 
+
+
+strnasta prednaska-Garbage collector
+SOH - Small Object Heap
+LOH - Large Object Heap >85_000B
+
+strankovani - ochrana pamati
+kdyz alokujeme tak sa nespusta
+ked prebieha GC tak sa zapauzuju vsetky vlakna
+najde sa cesta do zivicyh objektov -- heapcompacting 
+alokace je draha no v C# je lacni kedze sa tam robi heapcompacting
+GC ma 3 generace ak prezije tak v gen2 ostane stale
+stringy su striktne immutable
+StringBuilder je mutable
+
+ 
+
+
+
+
